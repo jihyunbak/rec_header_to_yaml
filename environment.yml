@@ -1,0 +1,15 @@
+# usage:
+# to add required packages to an existing enviornment, run
+#   `conda env update -f environment.yml`
+# to create a new environment from this file, run
+#   `conda env create --name [ENV_NAME] --file=environment.yml`
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python
+  - notebook
+  - xmltodict
+  - pyyaml
+  - parse
+
