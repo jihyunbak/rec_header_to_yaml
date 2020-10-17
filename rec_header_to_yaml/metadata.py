@@ -37,7 +37,7 @@ class NWBMetadataHelper():
         # animal_nickname: for file naming only (animal_name for folder naming)
         # (if the two are different)
         self.animal_nickname = animal_nickname or self.animal_name
-        self.session_id = '{}_{}'.format(self.animal_nickname, self.date)
+        self.session_id = '{}_{}'.format(self.animal_name, self.date)
         self.rec_path = os.path.join(self.data_path,
                             '{}/raw/{}/'.format(self.animal_name, self.date))
         self.copy_path = copy_path
@@ -128,7 +128,7 @@ class NWBMetadataHelper():
         # conserve epoch order
         detected_tasks = []
         for t in self.epoch_label_tuples:
-            if t in detected_tasks:
+            if t[1] in detected_tasks:
                 continue
             detected_tasks.append(t[1])
         self.detected_tasks = detected_tasks
