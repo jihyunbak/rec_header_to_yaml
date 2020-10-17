@@ -105,7 +105,7 @@ class NWBMetadataHelper():
             return header_files[0]
 
     def extract_rec_headers(self):
-        ''' creates .rec_header.xml files '''
+        ''' creates .rec_header.xml (trodesconfig) files '''
         rec_files_list = self.find_files_with_extension('.rec')
         print('extracting {} rec header files into {}...'.format(
             len(rec_files_list), self.copy_path))
@@ -251,7 +251,8 @@ class NWBMetadataHelper():
     def get_default_header_file_path(self):
         entry_key = 'default_header_file_path'
         comments = [
-            'should this be replaced with the reconfig xml file?'
+            # this is for header validation and can be left as is (below)
+            # (something we can change in the future)
         ]
         meta_entry = 'default_header.xml'
         return {entry_key: meta_entry}, comments
@@ -259,9 +260,10 @@ class NWBMetadataHelper():
     def get_data_acq_device(self):
         entry_key = 'data acq device'
         comments = [
-            'copied from beans ...'
+            # can consider this fixed
         ]
 
+        
         meta_entry = [
             {
             'name': 'SpikeGadgets',
@@ -293,7 +295,8 @@ class NWBMetadataHelper():
     def get_device(self):
         entry_key = 'device'
         comments = [
-            'copied from beans...'
+            # can consider this fixed for all electrode-based experiments
+            # probably no longer necessary
         ]
 
         meta_entry = {'name': ['Trodes']}
@@ -317,7 +320,7 @@ class NWBMetadataHelper():
             'A/D units to volts: 0.195 uV / lsb  (copied from beans; should confirm)'
         ]
         entries = {
-            'raw_data_to_volts': '0.000000195',
+            'raw_data_to_volts': 0.000000195,
             'times_period_multiplier': self.placeholder_text
         }
         return entries, comments
@@ -325,14 +328,16 @@ class NWBMetadataHelper():
     def get_cameras(self):
         entry_key = 'cameras'
         comments = [
-            'where is camera information stored?'
+            'need experimenter input'
+            # You can make the first (sleep) camera id:0 and the second (run) camera id:1.
+            # We typically have two cameras, one for run and one for sleep.
         ]
 
         # placeholder for now (just match number of tasks)
         meta_entry = []
-        for task in self.detected_tasks:
+        for i, task in enumerate(self.detected_tasks):
             out = {
-                'id': self.placeholder_text,
+                'id': i,
                 'meters_per_pixel': self.placeholder_text,
                 'manufacturer': self.placeholder_text,
                 'model': self.placeholder_text,
@@ -350,12 +355,13 @@ class NWBMetadataHelper():
 
         # placeholder for now
         meta_entry = []
-        for task in self.detected_tasks:
+        for i, task in enumerate(self.detected_tasks):
             task_epochs = [int(t[0]) for t in self.epoch_label_tuples
                             if t[1] == task]
+            task_name = self.task_code.get(task, self.placeholder_text)
             out = {
-                'task_name': task,
-                'task_description': self.task_code.get(task, self.placeholder_text),
+                'task_name': task_name,
+                'task_description': task_name,
                 'camera_id': [self.placeholder_text],
                 'task_epochs': task_epochs
             }
