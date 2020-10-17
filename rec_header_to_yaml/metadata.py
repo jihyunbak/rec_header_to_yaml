@@ -87,6 +87,20 @@ class NWBMetadataHelper():
         self.filename_format_keys = format_keys
         self.filename_format_string = format_string
 
+    def get_filename(self, epoch, label, extension):
+        if extension[0] == '.':
+            extension = extension[1:]
+            
+        # should fix using the official regex format
+        filename = '{date}_{animal}_{epoch}_{label}.{extension}'.format(
+            date = self.date,
+            animal = self.animal_name,
+            epoch = epoch,
+            label = label,
+            extension = extension
+        )
+        return filename
+
     def _get_header_file(self, reconfig=None):
         ''' reconfig: path to reconfig file '''
         if (reconfig is not None) and Path(reconfig).is_file():
