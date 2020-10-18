@@ -484,18 +484,17 @@ class NWBMetadataHelper():
             for probe in probes_used:
                 if num_channels <= probe['ch_per_shank']:
                     current_probe = probe['device_type']
-                    if ((last probe is not None and last_probe != current_probe)
-                        or ch_cnt + num_channels > probe['ch_per_probe']):
+                    new_probe_type = (last_probe != current_probe)
+                    exceeds_probe_size = (ch_cnt + num_channels > probe['ch_per_probe'])
+                    if (new_probe_type or exceeds_probe_size):
                         # assign to a new electrode group
-                        group = {'id': group_id,
-                                 'device_type': current_probe}
+                        if last_probe is not None:
+                            group_id += 1
+                        ch_cnt = 0
+                        group = {'id': group_id, 'device_type': current_probe}
                         electrode_groups.append(group)
-                        group_id += 1
-                        ch_cnt = num_channels
-                        ch_id_base = 0
-                    else:
-                        ch_id_base = ch_cnt
-                        ch_cnt += num_channels
+                    ch_id_base = ch_cnt
+                    ch_cnt += num_channels
                     ntrode['electrode_group'] = group_id
                     found_probe = True
                     last_probe = current_probe
