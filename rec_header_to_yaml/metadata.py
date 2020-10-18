@@ -52,6 +52,7 @@ class NWBMetadataHelper():
         self._detect_tasks()
 
         self.header_file = self._get_header_file(reconfig=reconfig)
+        self._get_ntrodes_config()
 
         self.set_basic_info(experimenter_name=experimenter_name,
                             experiment_description=experiment_description,
@@ -419,28 +420,50 @@ class NWBMetadataHelper():
 
         xml_data = self.get_config_from_header()
         meta_entry = []
-        # disp_channel = xml_data['AuxDisplayConfiguration']['DispChannel']
-        # for x in disp_channel:
-        #     out = {
-        #         'description': x['id'],
-        #         'name': self.placeholder_text
-        #     }
-        #     meta_entry.append(out)
         for key in self.dio_id:
             for n, v in self.dio_id[key].items():
                 out = {
-                    'description': '{}{}'.format(key, n),
+                    'description': '{}{}'.format(key, n+1), # 1-based
                     'name': v
                 }
                 meta_entry.append(out)
         return {entry_key: meta_entry}, comments
+
+    def _get_ntrodes_config(self):
+        xml_data = self.get_config_from_header()
+        ntrodes_config = self.extract_ntrodes_info(xml_data)
+        
+        electrode_groups = []
+        group_id = 0
+        ch_cnt = 0
+        for ntrode in ntrodes_config:
+            num_channels = sum([1 for k in ntrode['map']])
+            if num_channels <= 4:
+                group = {'id': group_id, 'device_type': 'tetrode_12.5.yml'}
+                electrode_groups.append()
+                ntrode['electrode_group'] = group_id
+                group_id += group_id
+            if num_channels <= 16:
+                # this is a part of a 32-channel probe
+                # in general this should be more flexible
+                if ch_cnt + num_channels > 32:
+                    # assign to a new electrode group
+                    group_id += group_id
+                    ch_cnt = num_channels
+                else:
+                    ch_cnt += num_channels
+                group = {'id': group_id, 'device_type': '32c-2s8mm6cm-20um-40um-dl.yml'}
+                ntrode['electrode_group'] = group_id
+                
+                
 
     def get_electrode_groups(self):
         entry_key = 'electrode groups'
         comments = [
             'where is electrode groups information stored?'
         ]
-
+        
+        
         # placeholder for now
         meta_entry = [
             {
