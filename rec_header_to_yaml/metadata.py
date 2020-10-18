@@ -445,13 +445,13 @@ class NWBMetadataHelper():
                 group = {'id': group_id, 'device_type': 'tetrode_12.5.yml'}
                 electrode_groups.append(group)
                 ntrode['electrode_group'] = group_id
-                group_id += group_id
+                group_id += 1
             if num_channels <= 16:
                 # this is a part of a 32-channel probe
                 # in general this should be more flexible
                 if ch_cnt + num_channels > 32:
                     # assign to a new electrode group
-                    group_id += group_id
+                    group_id += 1
                     ch_cnt = num_channels
                 else:
                     ch_cnt += num_channels
