@@ -442,10 +442,11 @@ class NWBMetadataHelper():
             except KeyError:
                 continue
             if num_channels <= 4:
-                group = {'id': group_id, 'device_type': 'tetrode_12.5.yml'}
+                group = {'id': group_id, 'device_type': 'tetrode_12.5'}
                 electrode_groups.append(group)
                 ntrode['electrode_group'] = group_id
                 group_id += 1
+                ch_id_base = 0
             elif num_channels <= 16:
                 # this is a part of a 32-channel probe
                 # in general this should be more flexible
@@ -453,16 +454,24 @@ class NWBMetadataHelper():
                     # assign to a new electrode group
                     group_id += 1
                     ch_cnt = num_channels
+                    ch_id_base = 0
                 else:
+                    ch_id_base = ch_cnt
                     ch_cnt += num_channels
-                group = {'id': group_id, 'device_type': '32c-2s8mm6cm-20um-40um-dl.yml'}
+                group = {'id': group_id, 'device_type': '32c-2s8mm6cm-20um-40um-dl'}
                 electrode_groups.append(group)
                 ntrode['electrode_group'] = group_id
             else:
                 raise RuntimeError('unknown shank type')
+            self._remap_channels(ntrode, base=ch_id_base)
                 
         self.ntrodes_config = ntrodes_config
         self.electrode_groups = electrode_groups
+        
+    def _remap_channels(self, ntrode, base=0):
+        for k, v in ntrode['map']:
+            # ignore existing channel number?
+            ntrode['map'][k] = base + int(k)
 
     def get_electrode_groups(self):
         entry_key = 'electrode groups'
