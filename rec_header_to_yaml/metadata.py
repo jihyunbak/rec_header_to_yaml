@@ -456,6 +456,7 @@ class NWBMetadataHelper():
                 else:
                     ch_cnt += num_channels
                 group = {'id': group_id, 'device_type': '32c-2s8mm6cm-20um-40um-dl.yml'}
+                electrode_groups.append(group)
                 ntrode['electrode_group'] = group_id
             else:
                 raise RuntimeError('unknown shank type')
