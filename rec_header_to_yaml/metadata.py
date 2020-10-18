@@ -469,7 +469,7 @@ class NWBMetadataHelper():
         self.electrode_groups = electrode_groups
         
     def _remap_channels(self, ntrode, base=0):
-        for k, v in ntrode['map']:
+        for k in ntrode['map']:
             # ignore existing channel number?
             ntrode['map'][k] = base + int(k)
 
