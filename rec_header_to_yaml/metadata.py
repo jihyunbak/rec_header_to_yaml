@@ -484,7 +484,7 @@ class NWBMetadataHelper():
             for probe in probes_used:
                 if num_channels <= probe['ch_per_shank']:
                     current_probe = probe['device_type']
-                    if (last_probe != current_probe
+                    if ((last probe is not None and last_probe != current_probe)
                         or ch_cnt + num_channels > probe['ch_per_probe']):
                         # assign to a new electrode group
                         group = {'id': group_id,
