@@ -458,28 +458,28 @@ class NWBMetadataHelper():
                 group = {'id': group_id, 'device_type': '32c-2s8mm6cm-20um-40um-dl.yml'}
                 ntrode['electrode_group'] = group_id
                 
-                
+        self.ntrodes_config = ntrodes_config
+        self.electrode_groups = electrode_groups
 
     def get_electrode_groups(self):
         entry_key = 'electrode groups'
         comments = [
             'where is electrode groups information stored?'
         ]
-        
-        
-        # placeholder for now
-        meta_entry = [
-            {
-                'id': self.placeholder_text,
+
+        meta_entry = []
+        for group in self.electrode_groups:
+            out = {
+                'id': group['id'],
                 'location': self.placeholder_text,
-                'device_type': self.placeholder_text,
+                'device_type': group['device_type'],
                 'targeted_location': self.placeholder_text,
                 'targeted_x': self.placeholder_text,
                 'targeted_y': self.placeholder_text,
                 'targeted_z': self.placeholder_text,
                 'units': self.placeholder_text
             }
-        ]
+            meta_entry.append(group)
         return {entry_key: meta_entry}, comments
 
     def get_ntrode_electrode_groups_channel_map(self):
@@ -491,8 +491,7 @@ class NWBMetadataHelper():
             ''
         ]
 
-        xml_data = self.get_config_from_header()
-        meta_entry = self.extract_ntrodes_info(xml_data)
+        meta_entry = self.ntrodes_config
         return {entry_key: meta_entry}, comments
 
 
