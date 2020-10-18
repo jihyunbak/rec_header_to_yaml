@@ -480,12 +480,15 @@ class NWBMetadataHelper():
             # self._remap_channels(ntrode, base=ch_id_base)
 
             found_probe = False
+            last_probe = None
             for probe in probes_used:
                 if num_channels <= probe['ch_per_shank']:
-                    if ch_cnt + num_channels > probe['ch_per_probe']:
+                    current_probe = probe['device_type']
+                    if (last_probe != current_probe
+                        or ch_cnt + num_channels > probe['ch_per_probe']):
                         # assign to a new electrode group
                         group = {'id': group_id,
-                                 'device_type': probe['device_type']}
+                                 'device_type': current_probe}
                         electrode_groups.append(group)
                         group_id += 1
                         ch_cnt = num_channels
@@ -495,6 +498,7 @@ class NWBMetadataHelper():
                         ch_cnt += num_channels
                     ntrode['electrode_group'] = group_id
                     found_probe = True
+                    last_probe = current_probe
                     break
             if not found_probe:
                 raise RuntimeError('unknown shank type')
