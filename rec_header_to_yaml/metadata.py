@@ -446,7 +446,7 @@ class NWBMetadataHelper():
                 electrode_groups.append(group)
                 ntrode['electrode_group'] = group_id
                 group_id += 1
-            if num_channels <= 16:
+            elif num_channels <= 16:
                 # this is a part of a 32-channel probe
                 # in general this should be more flexible
                 if ch_cnt + num_channels > 32:
@@ -457,6 +457,8 @@ class NWBMetadataHelper():
                     ch_cnt += num_channels
                 group = {'id': group_id, 'device_type': '32c-2s8mm6cm-20um-40um-dl.yml'}
                 ntrode['electrode_group'] = group_id
+            else:
+                raise RuntimeError('unknown shank type')
                 
         self.ntrodes_config = ntrodes_config
         self.electrode_groups = electrode_groups
