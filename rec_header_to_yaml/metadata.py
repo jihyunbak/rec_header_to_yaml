@@ -399,7 +399,7 @@ class NWBMetadataHelper():
             basename = os.path.basename(file)
             t = self._parse_label(parsed['label'])[0] # 's' or 'r'
             camera_id = self.placeholder_text
-            for i, task in self.detected_tasks:
+            for i, task in enumerate(self.detected_tasks):
                 if t == task:
                     camera_id = i
                     break
