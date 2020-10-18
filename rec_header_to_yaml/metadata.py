@@ -20,6 +20,7 @@ class NWBMetadataHelper():
                  data_path: str,
                  animal_name: str,
                  date: str,
+                 dio_id: dict,
                  experimenter_name=None,
                  experiment_description=None,
                  session_description=None,
@@ -41,6 +42,8 @@ class NWBMetadataHelper():
         self.rec_path = os.path.join(self.data_path,
                             '{}/raw/{}/'.format(self.animal_name, self.date))
         self.copy_path = copy_path
+        
+        self.dio_id = dio_id
 
         self.placeholder_text = placeholder_text
 
@@ -319,7 +322,7 @@ class NWBMetadataHelper():
     def get_units(self):
         entry_key = 'units'
         comments = [
-            'need input'
+            # 'need input'
         ]
 
         meta_entry = {
@@ -330,33 +333,34 @@ class NWBMetadataHelper():
 
     def get_conversion(self):
         comments = [
-            'conversion factors:',
-            'A/D units to volts: 0.195 uV / lsb  (copied from beans; should confirm)'
+            # 'conversion factors:',
+            'A/D units to volts: 0.195 uV / lsb' # determined by SpikesGadget
         ]
         entries = {
             'raw_data_to_volts': 0.000000195,
-            'times_period_multiplier': self.placeholder_text
+            # 'times_period_multiplier': self.placeholder_text # optional
         }
         return entries, comments
 
     def get_cameras(self):
         entry_key = 'cameras'
         comments = [
-            'need experimenter input'
             # You can make the first (sleep) camera id:0 and the second (run) camera id:1.
             # We typically have two cameras, one for run and one for sleep.
+            'meters_per_pixel: to be determined from video & maze dimensions'
         ]
 
         # placeholder for now (just match number of tasks)
         meta_entry = []
         for i, task in enumerate(self.detected_tasks):
+            task_name = self.task_code.get(task, self.placeholder_text)
             out = {
                 'id': i,
                 'meters_per_pixel': self.placeholder_text,
                 'manufacturer': self.placeholder_text,
                 'model': self.placeholder_text,
                 'lens': self.placeholder_text,
-                'camera_name': self.placeholder_text
+                'camera_name': '{} camera'.format(task_name)
             }
             meta_entry.append(out)
         return {entry_key: meta_entry}, comments
@@ -364,7 +368,7 @@ class NWBMetadataHelper():
     def get_tasks(self):
         entry_key = 'tasks'
         comments = [
-            'need manual input'
+            # 'need manual input'
         ]
 
         # placeholder for now
@@ -376,7 +380,7 @@ class NWBMetadataHelper():
             out = {
                 'task_name': task_name,
                 'task_description': task_name,
-                'camera_id': [self.placeholder_text],
+                'camera_id': i,
                 'task_epochs': task_epochs
             }
             meta_entry.append(out)
@@ -393,9 +397,15 @@ class NWBMetadataHelper():
         for file in raw_files:
             parsed = self.parse_filename(file)
             basename = os.path.basename(file)
+            t = self._parse_label(parsed['label'])[0] # 's' or 'r'
+            camera_id = self.placeholder_text
+            for i, task in self.detected_tasks:
+                if t == task:
+                    camera_id = i
+                    break
             out = {
                 'name': basename,
-                'camera_id': self.placeholder_text,
+                'camera_id': camera_id,
                 'task_epochs': int(parsed['epoch'])
             }
             meta_entry.append(out)
@@ -404,18 +414,25 @@ class NWBMetadataHelper():
     def get_behavioral_events(self):
         entry_key = 'behavioral_events'
         comments = [
-            'need manual input - not all Din/Dout are used'
+            'read from dio_id (experimenter input)'
         ]
 
         xml_data = self.get_config_from_header()
-        disp_channel = xml_data['AuxDisplayConfiguration']['DispChannel']
         meta_entry = []
-        for x in disp_channel:
-            out = {
-                'description': x['id'],
-                'name': self.placeholder_text
-            }
-            meta_entry.append(out)
+        # disp_channel = xml_data['AuxDisplayConfiguration']['DispChannel']
+        # for x in disp_channel:
+        #     out = {
+        #         'description': x['id'],
+        #         'name': self.placeholder_text
+        #     }
+        #     meta_entry.append(out)
+        for key in self.dio_id:
+            for n, v in self.dio_id[key].items():
+                out = {
+                    'description': '{}{}'.format(key, n),
+                    'name': v
+                }
+                meta_entry.append(out)
         return {entry_key: meta_entry}, comments
 
     def get_electrode_groups(self):
