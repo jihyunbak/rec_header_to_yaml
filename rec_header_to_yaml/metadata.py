@@ -380,7 +380,7 @@ class NWBMetadataHelper():
             out = {
                 'task_name': task_name,
                 'task_description': task_name,
-                'camera_id': i,
+                'camera_id': [i],
                 'task_epochs': task_epochs
             }
             meta_entry.append(out)
