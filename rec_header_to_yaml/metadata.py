@@ -450,6 +450,7 @@ class NWBMetadataHelper():
         electrode_groups = []
         group_id = 0
         ch_cnt = 0
+        last_probe = None
         for ntrode in ntrodes_config:
             try:
                 num_channels = sum([1 for k in ntrode['map']])
@@ -480,7 +481,6 @@ class NWBMetadataHelper():
             # self._remap_channels(ntrode, base=ch_id_base)
 
             found_probe = False
-            last_probe = None
             for probe in probes_used:
                 if num_channels <= probe['ch_per_shank']:
                     current_probe = probe['device_type']
