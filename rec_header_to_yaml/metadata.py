@@ -437,10 +437,13 @@ class NWBMetadataHelper():
         group_id = 0
         ch_cnt = 0
         for ntrode in ntrodes_config:
-            num_channels = sum([1 for k in ntrode['map']])
+            try:
+                num_channels = sum([1 for k in ntrode['map']])
+            except KeyError:
+                continue
             if num_channels <= 4:
                 group = {'id': group_id, 'device_type': 'tetrode_12.5.yml'}
-                electrode_groups.append()
+                electrode_groups.append(group)
                 ntrode['electrode_group'] = group_id
                 group_id += group_id
             if num_channels <= 16:
