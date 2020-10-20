@@ -208,17 +208,17 @@ class NWBMetadataHelper():
         # then collect other fields
         self._write_comments(out_file, ['', '', '=== environment ==='])
         self._write_wrapper(out_file, self.get_data_acq_device)
-        self._write_wrapper(out_file, self.get_associated_files)
         self._write_wrapper(out_file, self.get_device)
+        self._write_wrapper(out_file, self.get_default_header_file_path)
         self._write_wrapper(out_file, self.get_units)
         self._write_wrapper(out_file, self.get_conversion)
-        self._write_wrapper(out_file, self.get_default_header_file_path)
 
         self._write_comments(out_file, ['', '', '=== behavior / video ==='])
         self._write_wrapper(out_file, self.get_cameras)
         self._write_wrapper(out_file, self.get_tasks)
-        self._write_wrapper(out_file, self.get_associated_video_files)
         self._write_wrapper(out_file, self.get_behavioral_events)
+        self._write_wrapper(out_file, self.get_associated_files)
+        self._write_wrapper(out_file, self.get_associated_video_files)
 
         self._write_comments(out_file, ['', '', '=== electrodes ==='])
         self._write_wrapper(out_file, self.get_electrode_groups)
@@ -434,7 +434,7 @@ class NWBMetadataHelper():
         ntrodes_config = self.extract_ntrodes_info(xml_data)
         
         # should be sorted from probes with fewer # channels
-        probes_used = [
+        self.probes_used = [
             {
                 'ch_per_probe': 4,
                 'ch_per_shank': 4,
@@ -456,32 +456,8 @@ class NWBMetadataHelper():
                 num_channels = sum([1 for k in ntrode['map']])
             except KeyError:
                 continue
-            # if num_channels <= 4:
-            #     group = {'id': group_id, 'device_type': 'tetrode_12.5'}
-            #     electrode_groups.append(group)
-            #     ntrode['electrode_group'] = group_id
-            #     group_id += 1
-            #     ch_id_base = 0
-            # elif num_channels <= 16:
-            #     # this is a part of a 32-channel probe
-            #     # in general this should be more flexible
-            #     if ch_cnt + num_channels > 32:
-            #         # assign to a new electrode group
-            #         group = {'id': group_id, 'device_type': '32c-2s8mm6cm-20um-40um-dl'}
-            #         electrode_groups.append(group)
-            #         group_id += 1
-            #         ch_cnt = num_channels
-            #         ch_id_base = 0
-            #     else:
-            #         ch_id_base = ch_cnt
-            #         ch_cnt += num_channels
-            #     ntrode['electrode_group'] = group_id
-            # else:
-            #     raise RuntimeError('unknown shank type')
-            # self._remap_channels(ntrode, base=ch_id_base)
-
             found_probe = False
-            for probe in probes_used:
+            for probe in self.probes_used:
                 if num_channels <= probe['ch_per_shank']:
                     current_probe = probe['device_type']
                     new_probe_type = (last_probe != current_probe)
