@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 import parse
 
-from .utils import copy_rec_header, read_xml, append_yml
+from .utils import copy_rec_header, read_xml, read_yml, append_yml
 
 
 HOME_DIR = os.path.expanduser('~')
@@ -23,7 +23,7 @@ class NWBMetadataHelper():
                  date: str,
                  dio_id: dict,
                  probes_used: dict,
-                 probes_yml_dir=None,
+                 probes_yml_dir=DEFAULT_PROBE_DIR,
                  experimenter_name=None,
                  experiment_description=None,
                  session_description=None,
@@ -47,8 +47,7 @@ class NWBMetadataHelper():
         self.copy_path = os.path.join(copy_path, self.session_id + '/')
         
         self.dio_id = dio_id
-        self.probes_used = self.load_probe_metadata(probes_used,
-                                                probes_yml_dir=probes_yml_dir)
+        self.probes_used = self.load_probe_metadata(probes_used, probes_yml_dir)
         
         self.placeholder_text = placeholder_text
 
@@ -64,12 +63,12 @@ class NWBMetadataHelper():
                             session_description=session_description,
                             **subject_info)
 
-    def load_probe_metadata(self, probes_used, probes_yml_dir=DEFAULT_PROBE_DIR):
+    def load_probe_metadata(self, probes_used, probes_yml_dir):
         probes = []
         for prb in probes_used:
             # read in from probe metadata file
-            probe_yml = read_yml(os.path.join(probes_yml_dir, 
-                                              prb['device_type'] + '.yml'))
+            probe_yml_path = os.path.join(probes_yml_dir, prb['device_type'] + '.yml')
+            probe_yml = read_yml(probe_yml_path)
             ch_cnts = [len(shank['electrodes']) for shank in probe_yml['shanks']]
             prb['ch_per_probe'] = sum(ch_cnts)
             if len(set(ch_cnts)) != 1:
@@ -80,7 +79,7 @@ class NWBMetadataHelper():
         
         # check probe with fewest # channels first
         probe_size = [(probe['ch_per_probe'], i) for i, probe in enumerate(probes)]
-        probes_sorted = [probes[1]] for tup in sorted(probe_size)]
+        probes_sorted = [probes[1] for tup in sorted(probe_size)]
         return probes_sorted
 
     def set_filename_format(self, filename_format=None):
