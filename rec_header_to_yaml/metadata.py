@@ -81,7 +81,7 @@ class NWBMetadataHelper():
         
         # check probe with fewest # channels first
         probe_size = [(probe['ch_per_probe'], i) for i, probe in enumerate(probes)]
-        probes_sorted = [probes[1] for tup in sorted(probe_size)]
+        probes_sorted = [probes[tup[1]] for tup in sorted(probe_size)]
         return probes_sorted
 
     def set_filename_format(self, filename_format=None):
@@ -444,8 +444,10 @@ class NWBMetadataHelper():
 
         xml_data = self.get_config_from_header()
         meta_entry = []
-        index_offset = self.dio_id.index_offset # 0- or 1-based
+        index_offset = self.dio_id['index_offset'] # 0- or 1-based
         for key in self.dio_id:
+            if not isinstance(self.dio_id[key], dict):
+                continue
             for n, v in self.dio_id[key].items():
                 out = {
                     'description': '{}{}'.format(key, n + index_offset),
