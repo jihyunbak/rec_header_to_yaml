@@ -317,7 +317,9 @@ class NWBMetadataHelper():
 
     def get_associated_files(self):
         entry_key = 'associated_files'
-        comments = []
+        comments = [
+            '' # extra spacing
+        ]
 
         raw_files = self.find_files_with_extension('.stateScriptLog')
         meta_entry = []
@@ -465,6 +467,7 @@ class NWBMetadataHelper():
         group_id = 0
         shank_id = 0
         ch_cnt = 0
+        probe_cnt = 0
         last_probe = None
         for ntrode in ntrodes_config:
             try:
@@ -477,16 +480,19 @@ class NWBMetadataHelper():
                 if num_channels <= probe['ch_per_shank']:
                     current_probe = probe['device_type']
                     new_probe_type = (last_probe != current_probe)
-                    # exceeds_probe_size = (ch_cnt + num_channels > probe['ch_per_probe'])
+                    if new_probe_type:
+                        probe_cnt = 0
                     exceeds_probe_size = (shank_id >= probe['num_shanks'])
                     if (new_probe_type or exceeds_probe_size):
                         # assign to a new electrode group
                         if last_probe is not None:
                             group_id += 1
+                            probe_cnt += 1
                         ch_cnt = 0
                         shank_id = 0
                         group = {'id': group_id,
-                                 'device_type': current_probe}
+                                 'device_type': current_probe,
+                                 'probe_cnt' = probe_cnt}
                         for k in probe:
                             group[k] = probe[k]
                         electrode_groups.append(group)
@@ -515,12 +521,13 @@ class NWBMetadataHelper():
 
         meta_entry = []
         for group in self.electrode_groups:
+            # description = group.get('description', self.placeholder_text)
+            description = '{} {}'.format(group['name'], group['probe_cnt'])
             out = {
                 'id': group['id'],
                 'location': group['location'],
                 'device_type': group['device_type'],
-                'description': group.get('description',
-                                    self.placeholder_text),
+                'description': description,
                 'targeted_location': group['location'],
                 'targeted_x': group.get('targeted_x', 0.0),
                 'targeted_y': group.get('targeted_y', 0.0),
