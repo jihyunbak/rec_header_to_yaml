@@ -245,7 +245,6 @@ class NWBMetadataHelper():
 
         self._write_comments(out_file, ['', '', '=== electrodes ==='])
         self._write_wrapper(out_file, self.get_electrode_groups)
-        self._write_comments(out_file, ['']) # extra spacing
         self._write_wrapper(out_file, self.get_ntrode_electrode_groups_channel_map)
 
         # last newline
@@ -499,7 +498,9 @@ class NWBMetadataHelper():
 
     def get_electrode_groups(self):
         entry_key = 'electrode groups'
-        comments = []
+        comments = [
+            '' # extra spacing
+        ]
 
         meta_entry = []
         for group in self.electrode_groups:
@@ -519,10 +520,7 @@ class NWBMetadataHelper():
     def get_ntrode_electrode_groups_channel_map(self):
         entry_key = 'ntrode electrode group channel map'
         comments = [
-            'ntrode electrode group channel map:',
-            'read directly from the header (or reconfig) xml file.',
-            'need more work!!',
-            ''
+            '' # extra spacing
         ]
 
         meta_entry = self.ntrodes_config
@@ -539,7 +537,8 @@ class NWBMetadataHelper():
         for ntrode in ntrode_config:
             nt = dict(ntrode_id=int(ntrode['id']),
                       electrode_group='Unknown',
-                      bad_channels='Unknown')
+                      bad_channels=[]
+                      )
             try:
                 hwChan_map = {}
                 for i, channel in enumerate(ntrode['SpikeChannel']):
