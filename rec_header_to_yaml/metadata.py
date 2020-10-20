@@ -125,10 +125,11 @@ class NWBMetadataHelper():
     def extract_rec_headers(self):
         ''' creates .rec_header.xml (trodesconfig) files '''
         rec_files_list = self.find_files_with_extension('.rec')
+        copy_dir = os.path.join(self.copy_path + self.session_id)
         print('extracting {} rec header files into {}...'.format(
-            len(rec_files_list), self.copy_path))
+            len(rec_files_list), copy_dir))
         for rec_file in rec_files_list:
-            copy_rec_header(rec_file, copy_dir=self.copy_path)
+            copy_rec_header(rec_file, copy_dir=copy_dir)
         print('done.')
 
     def _detect_tasks(self):
