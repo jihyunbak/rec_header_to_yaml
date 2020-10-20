@@ -12,6 +12,7 @@ from .utils import copy_rec_header, read_xml, append_yml
 HOME_DIR = os.path.expanduser('~')
 DEFAULT_TEMP_DIR = os.path.join(HOME_DIR, 'tmp/rec_header/')
 
+DEFAULT_PROBE_DIR = '../sample/yaml/'
 
 class NWBMetadataHelper():
     ''' help collecting metadata.yaml from experimental output. '''
@@ -21,6 +22,8 @@ class NWBMetadataHelper():
                  animal_name: str,
                  date: str,
                  dio_id: dict,
+                 probes_used: dict,
+                 probes_yml_dir=None,
                  experimenter_name=None,
                  experiment_description=None,
                  session_description=None,
@@ -44,7 +47,9 @@ class NWBMetadataHelper():
         self.copy_path = os.path.join(copy_path, self.session_id + '/')
         
         self.dio_id = dio_id
-
+        self.probes_used = self.load_probe_metadata(probes_used,
+                                                probes_yml_dir=probes_yml_dir)
+        
         self.placeholder_text = placeholder_text
 
         self.set_filename_format(filename_format=filename_format)
@@ -58,6 +63,25 @@ class NWBMetadataHelper():
                             experiment_description=experiment_description,
                             session_description=session_description,
                             **subject_info)
+
+    def load_probe_metadata(self, probes_used, probes_yml_dir=DEFAULT_PROBE_DIR):
+        probes = []
+        for prb in probes_used:
+            # read in from probe metadata file
+            probe_yml = read_yml(os.path.join(probes_yml_dir, 
+                                              prb['device_type'] + '.yml'))
+            ch_cnts = [len(shank['electrodes']) for shank in probe_yml['shanks']]
+            prb['ch_per_probe'] = sum(ch_cnts)
+            if len(set(ch_cnts)) != 1:
+                raise RuntimeError('cannot parse probe with different sized shanks')
+            prb['ch_per_shank'] = ch_cnts[0]
+            prb['units'] = probe_yml['units']
+            probes.append(prb)
+        
+        # check probe with fewest # channels first
+        probe_size = [(probe['ch_per_probe'], i) for i, probe in enumerate(probes)]
+        probes_sorted = [probes[1]] for tup in sorted(probe_size)]
+        return probes_sorted
 
     def set_filename_format(self, filename_format=None):
         '''
@@ -165,11 +189,11 @@ class NWBMetadataHelper():
             'session description': session_description or experiment_description,
             'session_id': self.session_id,
             'subject': {
+                'subject id': self.animal_name,
+                'species': subject_info.get('species', 'Rat'),
                 'description': subject_info.get('description', 'Long Evans Rat'),
                 'genotype': subject_info.get('genotype', 'Wild Type'),
                 'sex': subject_info.get('sex', 'Male'),
-                'species': subject_info.get('species', 'Rat'),
-                'subject id': self.animal_name,
                 'weight': subject_info.get('weight', self.placeholder_text)
             }
         }
@@ -238,7 +262,7 @@ class NWBMetadataHelper():
         metadata, comments = func()
 
         # first write comments for the section
-        spacing = ['', ''] # some spacing between sections
+        spacing = [''] # some spacing between sections
         if isinstance(comments, list):
             comments = spacing + comments
         else:
@@ -389,9 +413,7 @@ class NWBMetadataHelper():
 
     def get_associated_video_files(self):
         entry_key = 'associated_video_files'
-        comments = [
-            'need camera information'
-        ]
+        comments = []
 
         raw_files = self.find_files_with_extension('.*h264')
         meta_entry = []
@@ -414,9 +436,7 @@ class NWBMetadataHelper():
 
     def get_behavioral_events(self):
         entry_key = 'behavioral_events'
-        comments = [
-            'read from dio_id (experimenter input)'
-        ]
+        comments = []
 
         xml_data = self.get_config_from_header()
         meta_entry = []
@@ -433,20 +453,7 @@ class NWBMetadataHelper():
         xml_data = self.get_config_from_header()
         ntrodes_config = self.extract_ntrodes_info(xml_data)
         
-        # should be sorted from probes with fewer # channels
-        self.probes_used = [
-            {
-                'ch_per_probe': 4,
-                'ch_per_shank': 4,
-                'device_type': 'tetrode_12.5'
-            },
-            {
-                'ch_per_probe': 32,
-                'ch_per_shank': 16,
-                'device_type': '32c-2s8mm6cm-20um-40um-dl'
-            }
-        ]
-        
+        # assign shanks to electrode groups
         electrode_groups = []
         group_id = 0
         ch_cnt = 0
@@ -457,6 +464,7 @@ class NWBMetadataHelper():
             except KeyError:
                 continue
             found_probe = False
+
             for probe in self.probes_used:
                 if num_channels <= probe['ch_per_shank']:
                     current_probe = probe['device_type']
@@ -467,7 +475,10 @@ class NWBMetadataHelper():
                         if last_probe is not None:
                             group_id += 1
                         ch_cnt = 0
-                        group = {'id': group_id, 'device_type': current_probe}
+                        group = {'id': group_id,
+                                 'device_type': current_probe,
+                                 'location': probe['location'],
+                                 'units': probe['units']}
                         electrode_groups.append(group)
                     ch_id_base = ch_cnt
                     ch_cnt += num_channels
@@ -489,23 +500,21 @@ class NWBMetadataHelper():
 
     def get_electrode_groups(self):
         entry_key = 'electrode groups'
-        comments = [
-            'where is electrode groups information stored?'
-        ]
+        comments = []
 
         meta_entry = []
         for group in self.electrode_groups:
             out = {
                 'id': group['id'],
-                'location': self.placeholder_text,
+                'location': group['location'],
                 'device_type': group['device_type'],
-                'targeted_location': self.placeholder_text,
+                'targeted_location': group['location'],
                 'targeted_x': self.placeholder_text,
                 'targeted_y': self.placeholder_text,
                 'targeted_z': self.placeholder_text,
-                'units': self.placeholder_text
+                'units': group['units']
             }
-            meta_entry.append(group)
+            meta_entry.append(out)
         return {entry_key: meta_entry}, comments
 
     def get_ntrode_electrode_groups_channel_map(self):
