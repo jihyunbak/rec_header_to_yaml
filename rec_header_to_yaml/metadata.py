@@ -5,6 +5,7 @@ import io
 from pathlib import Path
 import re
 import parse
+import warnings
 
 from .utils import copy_rec_header, read_xml, read_yml, append_yml
 
@@ -509,7 +510,7 @@ class NWBMetadataHelper():
             
             # display warning
             if num_channels < probe['ch_per_shank']:
-                raise Warning('incomplete ntrode {}'.format(ntrode['ntrode_id']))
+                warnings.warn('incomplete ntrode {}'.format(ntrode['ntrode_id']))
                 
         self.ntrodes_config = ntrodes_config
         self.electrode_groups = electrode_groups
