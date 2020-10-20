@@ -474,9 +474,9 @@ class NWBMetadataHelper():
                             group_id += 1
                         ch_cnt = 0
                         group = {'id': group_id,
-                                 'device_type': current_probe,
-                                 'location': probe['location'],
-                                 'units': probe['units']}
+                                 'device_type': current_probe}
+                        for k in probe:
+                            group[k] = probe[k]
                         electrode_groups.append(group)
                     ch_id_base = ch_cnt
                     ch_cnt += num_channels
@@ -509,9 +509,9 @@ class NWBMetadataHelper():
                 'location': group['location'],
                 'device_type': group['device_type'],
                 'targeted_location': group['location'],
-                'targeted_x': self.placeholder_text,
-                'targeted_y': self.placeholder_text,
-                'targeted_z': self.placeholder_text,
+                'targeted_x': group.get('targeted_x', 0.0),
+                'targeted_y': group.get('targeted_y', 0.0),
+                'targeted_z': group.get('targeted_z', 0.0),
                 'units': group['units']
             }
             meta_entry.append(out)

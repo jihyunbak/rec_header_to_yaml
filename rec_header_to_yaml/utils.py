@@ -135,13 +135,14 @@ class MyDumper(yaml.Dumper):
         return super(MyDumper, self).increase_indent(flow, False)
 
 def float_representer(dumper, value):
-    text = '{0:.9f}'.format(value)
+    ''' no longer used '''
+    text = '{0:.3f}'.format(value)
     return dumper.represent_scalar(u'tag:yaml.org,2002:float', text)
 
 def write_yml(yml_path, data, access_mode='w', default_flow_style=False,
 sort_keys=False):
     # note: additional kwargs may not work in older versions of pyyaml
-    yaml.add_representer(float, float_representer)
+    # yaml.add_representer(float, float_representer)
     with io.open(yml_path, access_mode) as fh:
         yaml.dump(data, fh,
                   Dumper=MyDumper,
