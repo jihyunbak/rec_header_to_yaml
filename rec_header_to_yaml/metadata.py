@@ -5,13 +5,15 @@ import io
 from pathlib import Path
 import re
 import parse
+import warnings
 
-from .utils import copy_rec_header, read_xml, append_yml
+from .utils import copy_rec_header, read_xml, read_yml, append_yml
 
 
 HOME_DIR = os.path.expanduser('~')
 DEFAULT_TEMP_DIR = os.path.join(HOME_DIR, 'tmp/rec_header/')
 
+DEFAULT_PROBE_DIR = '../sample/yaml/'
 
 class NWBMetadataHelper():
     ''' help collecting metadata.yaml from experimental output. '''
@@ -20,6 +22,9 @@ class NWBMetadataHelper():
                  data_path: str,
                  animal_name: str,
                  date: str,
+                 dio_id: dict,
+                 probes_used: dict,
+                 probes_yml_dir=DEFAULT_PROBE_DIR,
                  experimenter_name=None,
                  experiment_description=None,
                  session_description=None,
@@ -37,11 +42,14 @@ class NWBMetadataHelper():
         # animal_nickname: for file naming only (animal_name for folder naming)
         # (if the two are different)
         self.animal_nickname = animal_nickname or self.animal_name
-        self.session_id = '{}_{}'.format(self.animal_nickname, self.date)
+        self.session_id = '{}_{}'.format(self.animal_name, self.date)
         self.rec_path = os.path.join(self.data_path,
                             '{}/raw/{}/'.format(self.animal_name, self.date))
-        self.copy_path = copy_path
-
+        self.copy_path = os.path.join(copy_path, self.session_id + '/')
+        
+        self.dio_id = dio_id
+        self.probes_used = self.load_probe_metadata(probes_used, probes_yml_dir)
+        
         self.placeholder_text = placeholder_text
 
         self.set_filename_format(filename_format=filename_format)
@@ -49,11 +57,33 @@ class NWBMetadataHelper():
         self._detect_tasks()
 
         self.header_file = self._get_header_file(reconfig=reconfig)
+        self._get_ntrodes_config()
 
         self.set_basic_info(experimenter_name=experimenter_name,
                             experiment_description=experiment_description,
                             session_description=session_description,
                             **subject_info)
+
+    def load_probe_metadata(self, probes_used, probes_yml_dir):
+        probes = []
+        for prb in probes_used:
+            # read in from probe metadata file
+            probe_yml_path = os.path.join(probes_yml_dir, prb['device_type'] + '.yml')
+            probe_yml = read_yml(probe_yml_path)
+            ch_cnts = [len(shank['electrodes']) for shank in probe_yml['shanks']]
+            prb['ch_per_probe'] = sum(ch_cnts)
+            if len(set(ch_cnts)) != 1:
+                raise RuntimeError('cannot parse probe with different sized shanks')
+            prb['ch_per_shank'] = ch_cnts[0]
+            prb['num_shanks'] = probe_yml['num_shanks']
+            prb['description'] = probe_yml['probe_description']
+            prb['units'] = probe_yml['units']
+            probes.append(prb)
+        
+        # check probe with fewest # channels first
+        probe_size = [(probe['ch_per_probe'], i) for i, probe in enumerate(probes)]
+        probes_sorted = [probes[tup[1]] for tup in sorted(probe_size)]
+        return probes_sorted
 
     def set_filename_format(self, filename_format=None):
         '''
@@ -87,6 +117,20 @@ class NWBMetadataHelper():
         self.filename_format_keys = format_keys
         self.filename_format_string = format_string
 
+    def get_filename(self, epoch, label, extension):
+        if extension[0] == '.':
+            extension = extension[1:]
+            
+        # should fix using the official regex format
+        filename = '{date}_{animal}_{epoch}_{label}.{extension}'.format(
+            date = self.date,
+            animal = self.animal_name,
+            epoch = epoch,
+            label = label,
+            extension = extension
+        )
+        return filename
+
     def _get_header_file(self, reconfig=None):
         ''' reconfig: path to reconfig file '''
         if (reconfig is not None) and Path(reconfig).is_file():
@@ -105,7 +149,7 @@ class NWBMetadataHelper():
             return header_files[0]
 
     def extract_rec_headers(self):
-        ''' creates .rec_header.xml files '''
+        ''' creates .rec_header.xml (trodesconfig) files '''
         rec_files_list = self.find_files_with_extension('.rec')
         print('extracting {} rec header files into {}...'.format(
             len(rec_files_list), self.copy_path))
@@ -128,7 +172,7 @@ class NWBMetadataHelper():
         # conserve epoch order
         detected_tasks = []
         for t in self.epoch_label_tuples:
-            if t in detected_tasks:
+            if t[1] in detected_tasks:
                 continue
             detected_tasks.append(t[1])
         self.detected_tasks = detected_tasks
@@ -147,11 +191,11 @@ class NWBMetadataHelper():
             'session description': session_description or experiment_description,
             'session_id': self.session_id,
             'subject': {
+                'subject id': self.animal_name,
+                'species': subject_info.get('species', 'Rat'),
                 'description': subject_info.get('description', 'Long Evans Rat'),
                 'genotype': subject_info.get('genotype', 'Wild Type'),
                 'sex': subject_info.get('sex', 'Male'),
-                'species': subject_info.get('species', 'Rat'),
-                'subject id': self.animal_name,
                 'weight': subject_info.get('weight', self.placeholder_text)
             }
         }
@@ -190,21 +234,20 @@ class NWBMetadataHelper():
         # then collect other fields
         self._write_comments(out_file, ['', '', '=== environment ==='])
         self._write_wrapper(out_file, self.get_data_acq_device)
-        self._write_wrapper(out_file, self.get_associated_files)
         self._write_wrapper(out_file, self.get_device)
+        self._write_wrapper(out_file, self.get_default_header_file_path)
         self._write_wrapper(out_file, self.get_units)
         self._write_wrapper(out_file, self.get_conversion)
-        self._write_wrapper(out_file, self.get_default_header_file_path)
 
         self._write_comments(out_file, ['', '', '=== behavior / video ==='])
         self._write_wrapper(out_file, self.get_cameras)
         self._write_wrapper(out_file, self.get_tasks)
-        self._write_wrapper(out_file, self.get_associated_video_files)
         self._write_wrapper(out_file, self.get_behavioral_events)
+        self._write_wrapper(out_file, self.get_associated_files)
+        self._write_wrapper(out_file, self.get_associated_video_files)
 
         self._write_comments(out_file, ['', '', '=== electrodes ==='])
         self._write_wrapper(out_file, self.get_electrode_groups)
-        self._write_comments(out_file, ['']) # extra spacing
         self._write_wrapper(out_file, self.get_ntrode_electrode_groups_channel_map)
 
         # last newline
@@ -220,7 +263,7 @@ class NWBMetadataHelper():
         metadata, comments = func()
 
         # first write comments for the section
-        spacing = ['', ''] # some spacing between sections
+        spacing = [''] # some spacing between sections
         if isinstance(comments, list):
             comments = spacing + comments
         else:
@@ -251,7 +294,8 @@ class NWBMetadataHelper():
     def get_default_header_file_path(self):
         entry_key = 'default_header_file_path'
         comments = [
-            'should this be replaced with the reconfig xml file?'
+            # this is for header validation and can be left as is (below)
+            # (something we can change in the future)
         ]
         meta_entry = 'default_header.xml'
         return {entry_key: meta_entry}, comments
@@ -259,9 +303,10 @@ class NWBMetadataHelper():
     def get_data_acq_device(self):
         entry_key = 'data acq device'
         comments = [
-            'copied from beans ...'
+            # can consider this fixed
         ]
 
+        
         meta_entry = [
             {
             'name': 'SpikeGadgets',
@@ -273,7 +318,9 @@ class NWBMetadataHelper():
 
     def get_associated_files(self):
         entry_key = 'associated_files'
-        comments = []
+        comments = [
+            '' # extra spacing
+        ]
 
         raw_files = self.find_files_with_extension('.stateScriptLog')
         meta_entry = []
@@ -293,7 +340,8 @@ class NWBMetadataHelper():
     def get_device(self):
         entry_key = 'device'
         comments = [
-            'copied from beans...'
+            # can consider this fixed for all electrode-based experiments
+            # probably no longer necessary
         ]
 
         meta_entry = {'name': ['Trodes']}
@@ -302,7 +350,7 @@ class NWBMetadataHelper():
     def get_units(self):
         entry_key = 'units'
         comments = [
-            'need input'
+            # 'need input'
         ]
 
         meta_entry = {
@@ -313,31 +361,34 @@ class NWBMetadataHelper():
 
     def get_conversion(self):
         comments = [
-            'conversion factors:',
-            'A/D units to volts: 0.195 uV / lsb  (copied from beans; should confirm)'
+            # 'conversion factors:',
+            'A/D units to volts: 0.195 uV / lsb' # determined by SpikesGadget
         ]
         entries = {
-            'raw_data_to_volts': '0.000000195',
-            'times_period_multiplier': self.placeholder_text
+            'raw_data_to_volts': 0.000000195,
+            # 'times_period_multiplier': self.placeholder_text # optional
         }
         return entries, comments
 
     def get_cameras(self):
         entry_key = 'cameras'
         comments = [
-            'where is camera information stored?'
+            # You can make the first (sleep) camera id:0 and the second (run) camera id:1.
+            # We typically have two cameras, one for run and one for sleep.
+            'meters_per_pixel: to be determined from video & maze dimensions'
         ]
 
         # placeholder for now (just match number of tasks)
         meta_entry = []
-        for task in self.detected_tasks:
+        for i, task in enumerate(self.detected_tasks):
+            task_name = self.task_code.get(task, self.placeholder_text)
             out = {
-                'id': self.placeholder_text,
+                'id': i,
                 'meters_per_pixel': self.placeholder_text,
                 'manufacturer': self.placeholder_text,
                 'model': self.placeholder_text,
                 'lens': self.placeholder_text,
-                'camera_name': self.placeholder_text
+                'camera_name': '{} camera'.format(task_name)
             }
             meta_entry.append(out)
         return {entry_key: meta_entry}, comments
@@ -345,18 +396,19 @@ class NWBMetadataHelper():
     def get_tasks(self):
         entry_key = 'tasks'
         comments = [
-            'need manual input'
+            '' # extra spacing
         ]
 
         # placeholder for now
         meta_entry = []
-        for task in self.detected_tasks:
+        for i, task in enumerate(self.detected_tasks):
             task_epochs = [int(t[0]) for t in self.epoch_label_tuples
                             if t[1] == task]
+            task_name = self.task_code.get(task, self.placeholder_text)
             out = {
-                'task_name': task,
-                'task_description': self.task_code.get(task, self.placeholder_text),
-                'camera_id': [self.placeholder_text],
+                'task_name': task_name,
+                'task_description': task_name,
+                'camera_id': [i],
                 'task_epochs': task_epochs
             }
             meta_entry.append(out)
@@ -365,7 +417,7 @@ class NWBMetadataHelper():
     def get_associated_video_files(self):
         entry_key = 'associated_video_files'
         comments = [
-            'need camera information'
+            '' # extra spacing
         ]
 
         raw_files = self.find_files_with_extension('.*h264')
@@ -373,9 +425,15 @@ class NWBMetadataHelper():
         for file in raw_files:
             parsed = self.parse_filename(file)
             basename = os.path.basename(file)
+            t = self._parse_label(parsed['label'])[0] # 's' or 'r'
+            camera_id = self.placeholder_text
+            for i, task in enumerate(self.detected_tasks):
+                if t == task:
+                    camera_id = i
+                    break
             out = {
                 'name': basename,
-                'camera_id': self.placeholder_text,
+                'camera_id': camera_id,
                 'task_epochs': int(parsed['epoch'])
             }
             meta_entry.append(out)
@@ -384,52 +442,113 @@ class NWBMetadataHelper():
     def get_behavioral_events(self):
         entry_key = 'behavioral_events'
         comments = [
-            'need manual input - not all Din/Dout are used'
+            '' # extra spacing
         ]
 
         xml_data = self.get_config_from_header()
-        disp_channel = xml_data['AuxDisplayConfiguration']['DispChannel']
         meta_entry = []
-        for x in disp_channel:
-            out = {
-                'description': x['id'],
-                'name': self.placeholder_text
-            }
-            meta_entry.append(out)
+        index_offset = self.dio_id['index_offset'] # 0- or 1-based
+        for key in self.dio_id:
+            if not isinstance(self.dio_id[key], dict):
+                continue
+            for n, v in self.dio_id[key].items():
+                out = {
+                    'description': '{}{}'.format(key, n + index_offset),
+                    'name': v
+                }
+                meta_entry.append(out)
         return {entry_key: meta_entry}, comments
+
+    def _get_ntrodes_config(self):
+        xml_data = self.get_config_from_header()
+        ntrodes_config = self.extract_ntrodes_info(xml_data)
+        
+        # assign shanks to electrode groups
+        electrode_groups = []
+        group_id = 0
+        shank_id = 0
+        ch_cnt = 0
+        probe_cnt = 0
+        last_probe = None
+        for ntrode in ntrodes_config:
+            try:
+                num_channels = sum([1 for k in ntrode['map']])
+            except KeyError:
+                continue
+            found_probe = False
+
+            for probe in self.probes_used:
+                if num_channels <= probe['ch_per_shank']:
+                    current_probe = probe['device_type']
+                    new_probe_type = (last_probe != current_probe)
+                    exceeds_probe_size = (shank_id >= probe['num_shanks'])
+                    if (new_probe_type or exceeds_probe_size):
+                        # assign to a new electrode group
+                        if last_probe is not None:
+                            group_id += 1
+                            probe_cnt += 1
+                        if new_probe_type:
+                            probe_cnt = 0
+                        ch_cnt = 0
+                        shank_id = 0
+                        group = {'id': group_id,
+                                 'device_type': current_probe,
+                                 'probe_cnt': probe_cnt}
+                        for k in probe:
+                            group[k] = probe[k]
+                        electrode_groups.append(group)
+                    ch_id_base = ch_cnt
+                    ch_cnt += num_channels
+                    shank_id += 1
+                    ntrode['electrode_group'] = group_id
+                    found_probe = True
+                    last_probe = current_probe
+                    break
+            if not found_probe:
+                raise RuntimeError('unknown shank type')
+            self._remap_channels(ntrode, base=ch_id_base)
+            
+            # display warning
+            if num_channels < probe['ch_per_shank']:
+                warnings.warn('incomplete ntrode {}'.format(ntrode['ntrode_id']))
+                
+        self.ntrodes_config = ntrodes_config
+        self.electrode_groups = electrode_groups
+        
+    def _remap_channels(self, ntrode, base=0):
+        for k in ntrode['map']:
+            # ignore existing channel number?
+            ntrode['map'][k] = base + int(k)
 
     def get_electrode_groups(self):
         entry_key = 'electrode groups'
-        comments = [
-            'where is electrode groups information stored?'
-        ]
+        comments = []
 
-        # placeholder for now
-        meta_entry = [
-            {
-                'id': self.placeholder_text,
-                'location': self.placeholder_text,
-                'device_type': self.placeholder_text,
-                'targeted_location': self.placeholder_text,
-                'targeted_x': self.placeholder_text,
-                'targeted_y': self.placeholder_text,
-                'targeted_z': self.placeholder_text,
-                'units': self.placeholder_text
+        meta_entry = []
+        for group in self.electrode_groups:
+            # description = group.get('description', self.placeholder_text)
+            description = '{} {}'.format(group['name'], group['probe_cnt'])
+            out = {
+                'id': group['id'],
+                'location': group['location'],
+                'device_type': group['device_type'],
+                'description': description,
+                'targeted_location': group['location'],
+                'targeted_x': group.get('targeted_x', 0.0),
+                'targeted_y': group.get('targeted_y', 0.0),
+                'targeted_z': group.get('targeted_z', 0.0),
+                'units': group['units']
             }
-        ]
+            meta_entry.append(out)
         return {entry_key: meta_entry}, comments
 
     def get_ntrode_electrode_groups_channel_map(self):
         entry_key = 'ntrode electrode group channel map'
         comments = [
-            'ntrode electrode group channel map:',
-            'read directly from the header (or reconfig) xml file.',
-            'need more work!!',
-            ''
+            '' # extra spacing
         ]
 
-        xml_data = self.get_config_from_header()
-        meta_entry = self.extract_ntrodes_info(xml_data)
+        meta_entry = self.ntrodes_config
         return {entry_key: meta_entry}, comments
 
 
@@ -443,7 +562,8 @@ class NWBMetadataHelper():
         for ntrode in ntrode_config:
             nt = dict(ntrode_id=int(ntrode['id']),
                       electrode_group='Unknown',
-                      bad_channels='Unknown')
+                      bad_channels=[]
+                      )
             try:
                 hwChan_map = {}
                 for i, channel in enumerate(ntrode['SpikeChannel']):
