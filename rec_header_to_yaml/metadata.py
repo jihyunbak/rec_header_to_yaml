@@ -41,7 +41,7 @@ class NWBMetadataHelper():
         self.session_id = '{}_{}'.format(self.animal_name, self.date)
         self.rec_path = os.path.join(self.data_path,
                             '{}/raw/{}/'.format(self.animal_name, self.date))
-        self.copy_path = copy_path
+        self.copy_path = os.path.join(copy_path, self.session_id + '/')
         
         self.dio_id = dio_id
 
@@ -125,11 +125,10 @@ class NWBMetadataHelper():
     def extract_rec_headers(self):
         ''' creates .rec_header.xml (trodesconfig) files '''
         rec_files_list = self.find_files_with_extension('.rec')
-        copy_dir = os.path.join(self.copy_path + self.session_id)
         print('extracting {} rec header files into {}...'.format(
-            len(rec_files_list), copy_dir))
+            len(rec_files_list), self.copy_path))
         for rec_file in rec_files_list:
-            copy_rec_header(rec_file, copy_dir=copy_dir)
+            copy_rec_header(rec_file, copy_dir=self.copy_path)
         print('done.')
 
     def _detect_tasks(self):
