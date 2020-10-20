@@ -74,6 +74,7 @@ class NWBMetadataHelper():
             if len(set(ch_cnts)) != 1:
                 raise RuntimeError('cannot parse probe with different sized shanks')
             prb['ch_per_shank'] = ch_cnts[0]
+            prb['description'] = probe_yml['probe_description']
             prb['units'] = probe_yml['units']
             probes.append(prb)
         
@@ -391,7 +392,7 @@ class NWBMetadataHelper():
     def get_tasks(self):
         entry_key = 'tasks'
         comments = [
-            # 'need manual input'
+            '' # extra spacing
         ]
 
         # placeholder for now
@@ -411,7 +412,9 @@ class NWBMetadataHelper():
 
     def get_associated_video_files(self):
         entry_key = 'associated_video_files'
-        comments = []
+        comments = [
+            '' # extra spacing
+        ]
 
         raw_files = self.find_files_with_extension('.*h264')
         meta_entry = []
@@ -434,14 +437,17 @@ class NWBMetadataHelper():
 
     def get_behavioral_events(self):
         entry_key = 'behavioral_events'
-        comments = []
+        comments = [
+            '' # extra spacing
+        ]
 
         xml_data = self.get_config_from_header()
         meta_entry = []
+        index_offset = self.dio_id.index_offset # 0- or 1-based
         for key in self.dio_id:
             for n, v in self.dio_id[key].items():
                 out = {
-                    'description': '{}{}'.format(key, n+1), # 1-based
+                    'description': '{}{}'.format(key, n + index_offset),
                     'name': v
                 }
                 meta_entry.append(out)
@@ -498,9 +504,7 @@ class NWBMetadataHelper():
 
     def get_electrode_groups(self):
         entry_key = 'electrode groups'
-        comments = [
-            '' # extra spacing
-        ]
+        comments = []
 
         meta_entry = []
         for group in self.electrode_groups:
@@ -508,6 +512,8 @@ class NWBMetadataHelper():
                 'id': group['id'],
                 'location': group['location'],
                 'device_type': group['device_type'],
+                'description': group.get('description',
+                                    self.placeholder_text),
                 'targeted_location': group['location'],
                 'targeted_x': group.get('targeted_x', 0.0),
                 'targeted_y': group.get('targeted_y', 0.0),
