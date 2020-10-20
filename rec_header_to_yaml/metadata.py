@@ -74,6 +74,7 @@ class NWBMetadataHelper():
             if len(set(ch_cnts)) != 1:
                 raise RuntimeError('cannot parse probe with different sized shanks')
             prb['ch_per_shank'] = ch_cnts[0]
+            prb['num_shanks'] = probe_yml['num_shanks']
             prb['description'] = probe_yml['probe_description']
             prb['units'] = probe_yml['units']
             probes.append(prb)
@@ -460,6 +461,7 @@ class NWBMetadataHelper():
         # assign shanks to electrode groups
         electrode_groups = []
         group_id = 0
+        shank_id = 0
         ch_cnt = 0
         last_probe = None
         for ntrode in ntrodes_config:
@@ -473,12 +475,14 @@ class NWBMetadataHelper():
                 if num_channels <= probe['ch_per_shank']:
                     current_probe = probe['device_type']
                     new_probe_type = (last_probe != current_probe)
-                    exceeds_probe_size = (ch_cnt + num_channels > probe['ch_per_probe'])
+                    # exceeds_probe_size = (ch_cnt + num_channels > probe['ch_per_probe'])
+                    exceeds_probe_size = (shank_id >= probe['num_shanks'])
                     if (new_probe_type or exceeds_probe_size):
                         # assign to a new electrode group
                         if last_probe is not None:
                             group_id += 1
                         ch_cnt = 0
+                        shank_id = 0
                         group = {'id': group_id,
                                  'device_type': current_probe}
                         for k in probe:
@@ -486,6 +490,7 @@ class NWBMetadataHelper():
                         electrode_groups.append(group)
                     ch_id_base = ch_cnt
                     ch_cnt += num_channels
+                    shank_id += 1
                     ntrode['electrode_group'] = group_id
                     found_probe = True
                     last_probe = current_probe
