@@ -506,6 +506,10 @@ class NWBMetadataHelper():
             if not found_probe:
                 raise RuntimeError('unknown shank type')
             self._remap_channels(ntrode, base=ch_id_base)
+            
+            # display warning
+            if num_channels < probe['ch_per_shank']:
+                raise Warning('incomplete ntrode {}'.format(ntrode['ntrode_id']))
                 
         self.ntrodes_config = ntrodes_config
         self.electrode_groups = electrode_groups
