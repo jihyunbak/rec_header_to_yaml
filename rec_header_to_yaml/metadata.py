@@ -362,11 +362,12 @@ class NWBMetadataHelper():
     def get_conversion(self):
         comments = [
             # 'conversion factors:',
-            'A/D units to volts: 0.195 uV / lsb' # determined by SpikesGadget
+            'A/D units to volts: 0.195 uV / lsb', # determined by SpikesGadget
+            'times_period_multiplier: value TBC' # value copied from beans
         ]
         entries = {
             'raw_data_to_volts': 0.000000195,
-            # 'times_period_multiplier': self.placeholder_text # optional
+            'times_period_multiplier': 1.5
         }
         return entries, comments
 
@@ -500,7 +501,7 @@ class NWBMetadataHelper():
                     ch_id_base = ch_cnt
                     ch_cnt += num_channels
                     shank_id += 1
-                    ntrode['electrode_group'] = group_id
+                    ntrode['electrode_group_id'] = group_id
                     found_probe = True
                     last_probe = current_probe
                     break
