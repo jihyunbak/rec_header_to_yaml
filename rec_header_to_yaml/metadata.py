@@ -501,7 +501,7 @@ class NWBMetadataHelper():
                     ch_id_base = ch_cnt
                     ch_cnt += num_channels
                     shank_id += 1
-                    ntrode['electrode_group'] = group_id
+                    ntrode['electrode_group_id'] = group_id
                     found_probe = True
                     last_probe = current_probe
                     break
