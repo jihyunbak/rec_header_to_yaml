@@ -362,11 +362,12 @@ class NWBMetadataHelper():
     def get_conversion(self):
         comments = [
             # 'conversion factors:',
-            'A/D units to volts: 0.195 uV / lsb' # determined by SpikesGadget
+            'A/D units to volts: 0.195 uV / lsb', # determined by SpikesGadget
+            'times_period_multiplier: value TBC' # value copied from beans
         ]
         entries = {
             'raw_data_to_volts': 0.000000195,
-            # 'times_period_multiplier': self.placeholder_text # optional
+            'times_period_multiplier': 1.5
         }
         return entries, comments
 
