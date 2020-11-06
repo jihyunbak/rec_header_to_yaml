@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import parse
 import warnings
+import numpy as np
 
 from .utils import copy_rec_header, read_xml, read_yml, append_yml
 
@@ -507,16 +508,25 @@ class NWBMetadataHelper():
                     break
             if not found_probe:
                 raise RuntimeError('unknown shank type')
-            self._remap_channels(ntrode, base=ch_id_base)
             
             # display warning
             if num_channels < probe['ch_per_shank']:
-                warnings.warn('incomplete ntrode {}'.format(ntrode['ntrode_id']))
+                warnings.warn('incomplete ntrode {}: force completing'.format(ntrode['ntrode_id']))
+
+            self._remap_channels(ntrode,
+                                 base=ch_id_base,
+                                 force_num_channels=probe['ch_per_shank'])
                 
         self.ntrodes_config = ntrodes_config
         self.electrode_groups = electrode_groups
         
-    def _remap_channels(self, ntrode, base=0):
+    def _remap_channels(self, ntrode, base=0, force_num_channels=0):
+        num_channels = sum([1 for k in ntrode['map']])
+        if force_num_channels > num_channels:
+            for k in np.arange(force_num_channels):
+                ntrode['map'][int(k)] = base + int(k)
+            return
+
         for k in ntrode['map']:
             # ignore existing channel number?
             ntrode['map'][k] = base + int(k)
