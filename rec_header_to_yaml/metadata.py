@@ -13,7 +13,7 @@ from .utils import copy_rec_header, read_xml, read_yml, append_yml
 HOME_DIR = os.path.expanduser('~')
 DEFAULT_TEMP_DIR = os.path.join(HOME_DIR, 'tmp/rec_header/')
 
-DEFAULT_PROBE_DIR = '../sample/yaml/'
+DEFAULT_PROBE_DIR = '../yaml/'
 
 class NWBMetadataHelper():
     ''' help collecting metadata.yaml from experimental output. '''
@@ -562,7 +562,7 @@ class NWBMetadataHelper():
         ntrodes_info = []
         for ntrode in ntrode_config:
             nt = dict(ntrode_id=int(ntrode['id']),
-                      electrode_group='Unknown',
+                      electrode_group_id='Unknown',
                       bad_channels=[]
                       )
             try:
