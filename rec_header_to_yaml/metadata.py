@@ -395,9 +395,9 @@ class NWBMetadataHelper():
             out = {
                 'id': i,
                 'meters_per_pixel': this_camera.pop('meters_per_pixel', NULL_MPP),
-                # 'manufacturer': self.placeholder_text,
-                # 'model': self.placeholder_text,
-                # 'lens': self.placeholder_text,
+                'manufacturer': self.placeholder_text,
+                'model': self.placeholder_text,
+                'lens': self.placeholder_text,
                 'camera_name': '{} camera'.format(task_name)
             }
             # the user is always right
@@ -405,7 +405,7 @@ class NWBMetadataHelper():
                 if key == 'id':
                     # but the id should match the task order
                     continue
-                out[key] = this_camera[key]
+                out[key] = this_camera[key] # override
             meta_entry.append(out)
         return {entry_key: meta_entry}, comments
 
