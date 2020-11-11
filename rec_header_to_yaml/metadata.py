@@ -25,6 +25,7 @@ class NWBMetadataHelper():
                  date: str,
                  dio_id: dict,
                  probes_used: dict,
+                 cameras: dict = dict(),
                  probes_yml_dir=DEFAULT_PROBE_DIR,
                  experimenter_name=None,
                  experiment_description=None,
@@ -50,6 +51,10 @@ class NWBMetadataHelper():
         
         self.dio_id = dio_id
         self.probes_used = self.load_probe_metadata(probes_used, probes_yml_dir)
+        
+        # should be a dict of individual camera infos,
+        # where the top-level key matches the task code such as 's' or 'r'
+        self.cameras = cameras
         
         self.placeholder_text = placeholder_text
 
@@ -379,19 +384,28 @@ class NWBMetadataHelper():
             # We typically have two cameras, one for run and one for sleep.
             'meters_per_pixel: to be determined from video & maze dimensions'
         ]
+        
+        NULL_MPP = 0.0 # just a number to pass syntax check. should be replaced by a real value
 
         # placeholder for now (just match number of tasks)
         meta_entry = []
         for i, task in enumerate(self.detected_tasks):
             task_name = self.task_code.get(task, self.placeholder_text)
+            this_camera = self.cameras.get(task, {})
             out = {
                 'id': i,
-                'meters_per_pixel': self.placeholder_text,
-                'manufacturer': self.placeholder_text,
-                'model': self.placeholder_text,
-                'lens': self.placeholder_text,
+                'meters_per_pixel': this_camera.pop('meters_per_pixel', NULL_MPP),
+                # 'manufacturer': self.placeholder_text,
+                # 'model': self.placeholder_text,
+                # 'lens': self.placeholder_text,
                 'camera_name': '{} camera'.format(task_name)
             }
+            # the user is always right
+            for key in this_camera:
+                if key == 'id':
+                    # but the id should match the task order
+                    continue
+                out[key] = this_camera[key]
             meta_entry.append(out)
         return {entry_key: meta_entry}, comments
 
