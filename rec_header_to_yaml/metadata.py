@@ -536,9 +536,13 @@ class NWBMetadataHelper():
         
     def _remap_channels(self, ntrode, base=0, force_num_channels=0):
         num_channels = sum([1 for k in ntrode['map']])
+        bad_channels = []
         if force_num_channels > num_channels:
             for k in np.arange(force_num_channels):
+                if k not in ntrode['map']:
+                    bad_channels.append(int(k))
                 ntrode['map'][int(k)] = base + int(k)
+            ntrode['bad_channels'] = bad_channels
             return
 
         for k in ntrode['map']:
