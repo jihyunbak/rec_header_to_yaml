@@ -315,7 +315,7 @@ class NWBMetadataHelper():
         
         meta_entry = [
             {
-            'name': 'SpikeGadgets',
+            'system': 'SpikeGadgets',
             'amplifier': 'Intan',
             'adc_circuit': 'Intan'
             }
