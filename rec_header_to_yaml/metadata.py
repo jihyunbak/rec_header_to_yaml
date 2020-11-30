@@ -529,9 +529,12 @@ class NWBMetadataHelper():
 
             self._remap_channels(ntrode,
                                  base=ch_id_base,
-                                 force_num_channels=probe['ch_per_shank'])
+                                 force_num_channels=probe['ch_per_shank']
+                                 )
                 
         self.ntrodes_config = ntrodes_config
+        # self.ntrodes_config = [ntrode for ntrode in ntrodes_config
+        #                         if 'map' in ntrode.keys() and len(ntrode['map']) > 0]
         self.electrode_groups = electrode_groups
         
     def _remap_channels(self, ntrode, base=0, force_num_channels=0):
@@ -546,8 +549,13 @@ class NWBMetadataHelper():
             return
 
         for k in ntrode['map']:
+            hw_chan = ntrode['map'][k] # as in the header
+            if hw_chan < 0:
+                bad_channels.append(k)
             # ignore existing channel number?
             ntrode['map'][k] = base + int(k)
+        ntrode['bad_channels'] = bad_channels
+        return
 
     def get_electrode_groups(self):
         entry_key = 'electrode groups'
@@ -598,9 +606,11 @@ class NWBMetadataHelper():
                 for i, channel in enumerate(ntrode['SpikeChannel']):
                     hwChan_map[i] = int(channel['hwChan'])
                 nt['map'] = hwChan_map
+                ntrodes_info.append(nt)
             except KeyError:
-                print(' * WARNING: incomplete ntrode id {}'.format(ntrode['id']))
-            ntrodes_info.append(nt)
+                # print(' * WARNING: incomplete ntrode id {}'.format(ntrode['id']))
+                print(' * WARNING: incomplete ntrode id {}. skipping'.format(ntrode['id']))
+            # ntrodes_info.append(nt)
         return ntrodes_info
 
     def find_files_with_extension(self, extension, path=None, sort_list=True):
